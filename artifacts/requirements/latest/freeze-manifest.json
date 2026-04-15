@@ -1,5 +1,5 @@
 {
-  "freeze_timestamp": "2026-04-15T09:28:48Z",
+  "freeze_timestamp": "2026-04-15T09:37:41Z",
   "target_scope": "mvp",
   "status": "frozen",
   "documents": [
@@ -16,6 +16,6 @@
     "docs/specs/07-test-specs/acceptance-tests.md",
     "docs/specs/08-ai-task-packs/ai-coding-tasks.md"
   ],
-  "run_id": "24446919811",
-  "run_number": "1"
+  "run_id": "24447266939",
+  "run_number": "3"
 }
