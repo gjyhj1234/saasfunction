@@ -1,0 +1,309 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# 需求工程流水线 — Requirements Engineering Pipeline
+# ──────────────────────────────────────────────────────────────────────────────
+# 本 workflow 通过 13 个串行 job 逐步生成口腔 SaaS 系统的需求文档。
+# 每个 job 完成后立即提交，支持断点续跑和重复执行。
+# 编码前必须经过人工审批 (environment gate) 并主动停止。
+# ──────────────────────────────────────────────────────────────────────────────
+name: 需求工程流水线
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_scope:
+        description: "执行范围: all / mvp / module-appointments / module-patients"
+        required: false
+        default: "mvp"
+        type: string
+      stop_before_coding:
+        description: "是否在编码前停止 (建议始终为 true)"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: req-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TARGET_SCOPE: ${{ inputs.target_scope || 'mvp' }}
+  STOP_BEFORE_CODING: ${{ inputs.stop_before_coding }}
+  OUTPUT_DIR: artifacts/requirements/latest
+  DOCS_DIR: docs/specs
+  STATUS_DIR: .github/requirements-status
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Reusable step anchor — each job uses the same pattern:
+#   1. checkout  2. run-stage.sh  (which handles: sync, skip-check, generate, commit, push)
+# ──────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  # ── Job 01 ─────────────────────────────────────────────────────────────────
+  job_01:
+    name: "01 — 收集资料与竞品信息"
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_01_research_collect "$TARGET_SCOPE"
+
+  # ── Job 02 ─────────────────────────────────────────────────────────────────
+  job_02:
+    name: "02 — 规范化调研结果"
+    needs: [job_01]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_02_research_normalize "$TARGET_SCOPE"
+
+  # ── Job 03 ─────────────────────────────────────────────────────────────────
+  job_03:
+    name: "03 — 定义产品范围"
+    needs: [job_02]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_03_product_scope "$TARGET_SCOPE"
+
+  # ── Job 04 ─────────────────────────────────────────────────────────────────
+  job_04:
+    name: "04 — 定义系统蓝图"
+    needs: [job_03]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_04_system_blueprint "$TARGET_SCOPE"
+
+  # ── Job 05 ─────────────────────────────────────────────────────────────────
+  job_05:
+    name: "05 — 定义基础规范"
+    needs: [job_04]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_05_base_standards "$TARGET_SCOPE"
+
+  # ── Job 06 ─────────────────────────────────────────────────────────────────
+  job_06:
+    name: "06 — 建立菜单结构"
+    needs: [job_05]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_06_menu_structure "$TARGET_SCOPE"
+
+  # ── Job 07 ─────────────────────────────────────────────────────────────────
+  job_07:
+    name: "07 — 扩展功能树"
+    needs: [job_06]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_07_feature_tree "$TARGET_SCOPE"
+
+  # ── Job 08 ─────────────────────────────────────────────────────────────────
+  job_08:
+    name: "08 — 生成页面详细设计"
+    needs: [job_07]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_08_page_design "$TARGET_SCOPE"
+
+  # ── Job 09 ─────────────────────────────────────────────────────────────────
+  job_09:
+    name: "09 — 生成底层模型"
+    needs: [job_08]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_09_domain_model "$TARGET_SCOPE"
+
+  # ── Job 10 ─────────────────────────────────────────────────────────────────
+  job_10:
+    name: "10 — 生成验收测试文档"
+    needs: [job_09]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_10_test_specs "$TARGET_SCOPE"
+
+  # ── Job 11 ─────────────────────────────────────────────────────────────────
+  job_11:
+    name: "11 — 生成 AI 编码任务包"
+    needs: [job_10]
+    runs-on: ubuntu-latest
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_11_ai_task_packs "$TARGET_SCOPE"
+
+  # ── Job 12 — 人工审批关卡 ──────────────────────────────────────────────────
+  # 使用 GitHub Environment Gate 进行人工审批。
+  # 必须在仓库 Settings > Environments 中创建名为 "requirements-review"
+  # 的 environment，并配置 Required reviewers。
+  # ──────────────────────────────────────────────────────────────────────────
+  job_12:
+    name: "12 — 编码前人工审计"
+    needs: [job_11]
+    runs-on: ubuntu-latest
+    environment: requirements-review
+    outputs:
+      skipped: ${{ steps.run.outputs.stage_skipped }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_12_review_gate "$TARGET_SCOPE"
+
+  # ── Job 13 — 编码前停止 ────────────────────────────────────────────────────
+  job_13:
+    name: "13 — 编码前停止"
+    needs: [job_12]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: 执行阶段
+        id: run
+        shell: bash
+        run: |
+          chmod +x scripts/requirements/run-stage.sh scripts/requirements/common.sh scripts/requirements/stages/*.sh
+          bash scripts/requirements/run-stage.sh job_13_pre_coding_stop "$TARGET_SCOPE"
+      - name: 流水线完成
+        run: |
+          echo "::notice::🛑 需求工程流水线已完成，编码阶段未启动。"
+          echo "::notice::如需开始编码，请手动启动编码 workflow。"
