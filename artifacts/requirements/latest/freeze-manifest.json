@@ -1,0 +1,21 @@
+{
+  "freeze_timestamp": "2026-04-15T09:28:48Z",
+  "target_scope": "mvp",
+  "status": "frozen",
+  "documents": [
+    "docs/specs/01-research/competitive-analysis.md",
+    "docs/specs/01-research/user-research-summary.md",
+    "docs/specs/01-research/normalized-requirements.md",
+    "docs/specs/02-architecture/product-scope.md",
+    "docs/specs/02-architecture/system-blueprint.md",
+    "docs/specs/03-information-architecture/menu-structure.md",
+    "docs/specs/03-information-architecture/feature-tree.md",
+    "docs/specs/04-domain-model/domain-model.md",
+    "docs/specs/05-design-system/base-standards.md",
+    "docs/specs/06-pages/page-specifications.md",
+    "docs/specs/07-test-specs/acceptance-tests.md",
+    "docs/specs/08-ai-task-packs/ai-coding-tasks.md"
+  ],
+  "run_id": "24446919811",
+  "run_number": "1"
+}
