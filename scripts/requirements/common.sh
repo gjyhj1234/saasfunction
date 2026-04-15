@@ -33,7 +33,10 @@ read_status() {
   local sf
   sf="$(status_file_path "$job_id")"
   if [[ -f "$sf" ]]; then
-    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('status',''))" "$sf" 2>/dev/null || echo ""
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('status',''))" "$sf" 2>/dev/null || {
+      log_warn "$job_id" "Failed to parse status file: $sf"
+      echo ""
+    }
   else
     echo ""
   fi
@@ -45,7 +48,10 @@ read_status_scope() {
   local sf
   sf="$(status_file_path "$job_id")"
   if [[ -f "$sf" ]]; then
-    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('target_scope',''))" "$sf" 2>/dev/null || echo ""
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('target_scope',''))" "$sf" 2>/dev/null || {
+      log_warn "$job_id" "Failed to parse status file: $sf"
+      echo ""
+    }
   else
     echo ""
   fi
@@ -182,7 +188,7 @@ write_doc() {
   local filepath="$1"
   local content="$2"
   ensure_dir "$(dirname "$filepath")"
-  printf '%s' "$content" > "$filepath"
+  printf '%s\n' "$content" > "$filepath"
   log_info "doc" "Generated: $filepath"
 }
 

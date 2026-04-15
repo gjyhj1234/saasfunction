@@ -53,12 +53,16 @@ GENERATED_FILES=()
 export JOB_ID SCOPE DOCS_DIR OUTPUT_DIR STATUS_DIR
 
 # The stage script should output generated file paths (one per line) to stdout
-# and write documents. We capture the file list.
-stage_output=$("${STAGE_SCRIPT}" "$SCOPE") || {
-  write_status "$JOB_ID" "failed" "$SCOPE" "Stage script exited with error"
+# and write documents. We capture the file list. Stderr is preserved for diagnostics.
+stage_error_log="/tmp/${JOB_ID}_error.log"
+stage_output=$("${STAGE_SCRIPT}" "$SCOPE" 2>"$stage_error_log") || {
+  local err_detail
+  err_detail=$(tail -20 "$stage_error_log" 2>/dev/null || echo "no error details captured")
+  write_status "$JOB_ID" "failed" "$SCOPE" "Stage script exited with error: ${err_detail}"
+  log_error "$JOB_ID" "阶段执行失败。错误详情:"
+  cat "$stage_error_log" >&2 2>/dev/null || true
   local_status_file="$(status_file_path "$JOB_ID")"
   git_commit_and_push "$JOB_ID" "req-pipeline: ${JOB_ID} failed (scope=${SCOPE})" "$local_status_file"
-  log_error "$JOB_ID" "阶段执行失败"
   log_endgroup
   exit 1
 }
