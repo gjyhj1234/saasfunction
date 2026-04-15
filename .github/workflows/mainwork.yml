@@ -3,12 +3,12 @@ name: 需求工程流水线
 on:
   workflow_dispatch:
     inputs:
-      执行范围:
+      target_scope:
         description: "执行范围，例如：all / mvp / module-appointments / module-patients"
         required: false
         default: "mvp"
         type: string
-      编码前停止:
+      stop_before_coding:
         description: "是否在编码前强制停止"
         required: true
         default: true
@@ -19,15 +19,15 @@ permissions:
   actions: read
 
 concurrency:
-  group: requirements-pipeline-${{ github.ref }}-${{ inputs.执行范围 }}
+  group: requirements-pipeline-${{ github.ref }}-${{ inputs.target_scope }}
   cancel-in-progress: false
 
 env:
-  执行范围: ${{ inputs.执行范围 }}
-  编码前停止: ${{ inputs.编码前停止 }}
-  输出目录: artifacts/requirements/latest
-  文档目录: docs/specs
-  状态目录: .github/requirements-status
+  TARGET_SCOPE: ${{ inputs.target_scope }}
+  STOP_BEFORE_CODING: ${{ inputs.stop_before_coding }}
+  OUTPUT_DIR: artifacts/requirements/latest
+  DOCS_DIR: docs/specs
+  STATUS_DIR: .github/requirements-status
 
 jobs:
   job_01_收集资料与竞品信息:
@@ -40,71 +40,72 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: |
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查是否已完成
-        id: 检查状态
+        id: check_status
         shell: bash
         run: |
-          mkdir -p "$状态目录"
-          状态文件="$状态目录/job_01_收集资料与竞品信息.json"
+          mkdir -p "$STATUS_DIR"
+          status_file="$STATUS_DIR/job_01_收集资料与竞品信息.json"
 
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
             echo "阶段已完成，跳过执行。"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
             echo "阶段未完成，需要执行。"
           fi
 
       - name: 生成资料收集文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          mkdir -p "$输出目录"
-          mkdir -p "$文档目录/01-research/competitors"
+          mkdir -p "$OUTPUT_DIR"
+          mkdir -p "$DOCS_DIR/01-research/competitors"
 
-          cat > "$输出目录/research-index.json" <<EOF
+          cat > "$OUTPUT_DIR/research-index.json" <<EOF
           {
-            "scope": "${执行范围}",
+            "scope": "${TARGET_SCOPE}",
             "job": "job_01_收集资料与竞品信息",
             "status": "completed"
           }
           EOF
 
-          cat > "$文档目录/01-research/market-summary.md" <<EOF
+          cat > "$DOCS_DIR/01-research/market-summary.md" <<EOF
           # 市场调研汇总
 
           - 状态：已完成
           - 生成阶段：job_01_收集资料与竞品信息
-          - 执行范围：${执行范围}
+          - 执行范围：${TARGET_SCOPE}
 
           ## 目标
           收集口腔 SaaS、医疗 SaaS、CRM、收费/库存/报表相关资料，建立原始资料集。
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          mkdir -p "$状态目录"
-          cat > "$状态目录/job_01_收集资料与竞品信息.json" <<EOF
+          mkdir -p "$STATUS_DIR"
+          cat > "$STATUS_DIR/job_01_收集资料与竞品信息.json" <<EOF
           {
             "job": "job_01_收集资料与竞品信息",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "$输出目录" "$文档目录" "$状态目录" || true
+          git add "$OUTPUT_DIR" "$DOCS_DIR" "$STATUS_DIR" || true
 
           if git diff --cached --quiet; then
             echo "没有变更，无需提交。"
@@ -126,70 +127,71 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: |
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
         shell: bash
         run: |
-          test -f "$状态目录/job_01_收集资料与竞品信息.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_01_收集资料与竞品信息.json"
+          test -f "$STATUS_DIR/job_01_收集资料与竞品信息.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_01_收集资料与竞品信息.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
         shell: bash
         run: |
-          状态文件="$状态目录/job_02_规范化调研结果.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_02_规范化调研结果.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成规范化文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          mkdir -p "$文档目录/01-research"
+          mkdir -p "$DOCS_DIR/01-research"
 
-          cat > "$文档目录/01-research/feature-comparison-matrix.md" <<'EOF'
+          cat > "$DOCS_DIR/01-research/feature-comparison-matrix.md" <<'EOF'
           # 功能对比矩阵
           - 状态：已完成
           - 生成阶段：job_02_规范化调研结果
           EOF
 
-          cat > "$文档目录/01-research/menu-comparison-matrix.md" <<'EOF'
+          cat > "$DOCS_DIR/01-research/menu-comparison-matrix.md" <<'EOF'
           # 菜单对比矩阵
           - 状态：已完成
           - 生成阶段：job_02_规范化调研结果
           EOF
 
-          cat > "$文档目录/01-research/role-comparison-matrix.md" <<'EOF'
+          cat > "$DOCS_DIR/01-research/role-comparison-matrix.md" <<'EOF'
           # 角色对比矩阵
           - 状态：已完成
           - 生成阶段：job_02_规范化调研结果
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          cat > "$状态目录/job_02_规范化调研结果.json" <<EOF
+          cat > "$STATUS_DIR/job_02_规范化调研结果.json" <<EOF
           {
             "job": "job_02_规范化调研结果",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
 
           if git diff --cached --quiet; then
             echo "没有变更，无需提交。"
@@ -211,31 +213,34 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
-        run: |
-          test -f "$状态目录/job_02_规范化调研结果.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_02_规范化调研结果.json"
-
-      - name: 检查当前阶段是否已完成
-        id: 检查状态
         shell: bash
         run: |
-          状态文件="$状态目录/job_03_定义产品范围.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          test -f "$STATUS_DIR/job_02_规范化调研结果.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_02_规范化调研结果.json"
+
+      - name: 检查当前阶段是否已完成
+        id: check_status
+        shell: bash
+        run: |
+          status_file="$STATUS_DIR/job_03_定义产品范围.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成范围定义文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/00-governance"
-          mkdir -p "$文档目录/02-architecture"
+          mkdir -p "$DOCS_DIR/00-governance"
+          mkdir -p "$DOCS_DIR/02-architecture"
 
-          cat > "$文档目录/00-governance/scope-definition.md" <<'EOF'
+          cat > "$DOCS_DIR/00-governance/scope-definition.md" <<'EOF'
           # 范围定义
 
           - 状态：已完成
@@ -248,29 +253,31 @@ jobs:
           - 待补充
           EOF
 
-          cat > "$文档目录/02-architecture/product-boundary.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/product-boundary.md" <<'EOF'
           # 产品边界
           - 状态：已完成
           - 生成阶段：job_03_定义产品范围
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_03_定义产品范围.json" <<EOF
+          cat > "$STATUS_DIR/job_03_定义产品范围.json" <<EOF
           {
             "job": "job_03_定义产品范围",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_03_定义产品范围"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -287,75 +294,81 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_03_定义产品范围.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_03_定义产品范围.json"
+          test -f "$STATUS_DIR/job_03_定义产品范围.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_03_定义产品范围.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_04_定义系统蓝图.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_04_定义系统蓝图.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成系统蓝图文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/02-architecture"
+          mkdir -p "$DOCS_DIR/02-architecture"
 
-          cat > "$文档目录/02-architecture/system-overview.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/system-overview.md" <<'EOF'
           # 系统总览
           - 状态：已完成
           - 生成阶段：job_04_定义系统蓝图
           EOF
 
-          cat > "$文档目录/02-architecture/tenant-model.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/tenant-model.md" <<'EOF'
           # 租户模型
           - 状态：已完成
           - 生成阶段：job_04_定义系统蓝图
           EOF
 
-          cat > "$文档目录/02-architecture/organization-model.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/organization-model.md" <<'EOF'
           # 组织模型
           - 状态：已完成
           - 生成阶段：job_04_定义系统蓝图
           EOF
 
-          cat > "$文档目录/02-architecture/non-functional-requirements.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/non-functional-requirements.md" <<'EOF'
           # 非功能需求
           - 状态：已完成
           - 生成阶段：job_04_定义系统蓝图
           EOF
 
-          cat > "$文档目录/02-architecture/security-and-audit.md" <<'EOF'
+          cat > "$DOCS_DIR/02-architecture/security-and-audit.md" <<'EOF'
           # 安全与审计
           - 状态：已完成
           - 生成阶段：job_04_定义系统蓝图
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_04_定义系统蓝图.json" <<EOF
+          cat > "$STATUS_DIR/job_04_定义系统蓝图.json" <<EOF
           {
             "job": "job_04_定义系统蓝图",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_04_定义系统蓝图"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -372,61 +385,66 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_04_定义系统蓝图.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_04_定义系统蓝图.json"
+          test -f "$STATUS_DIR/job_04_定义系统蓝图.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_04_定义系统蓝图.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_05_定义基础规范.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_05_定义基础规范.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成基础规范文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          mkdir -p "$文档目录/05-design-system"
-          mkdir -p "$文档目录/00-governance"
+          mkdir -p "$DOCS_DIR/05-design-system"
+          mkdir -p "$DOCS_DIR/00-governance"
 
           for file in design-principles.md layout-spec.md form-spec.md table-spec.md modal-drawer-spec.md interaction-spec.md copywriting-spec.md common-components.md; do
-            cat > "$文档目录/05-design-system/$file" <<EOF
+            cat > "$DOCS_DIR/05-design-system/$file" <<EOF
           # ${file%.md}
           - 状态：已完成
           - 生成阶段：job_05_定义基础规范
           EOF
           done
 
-          cat > "$文档目录/00-governance/naming-conventions.md" <<'EOF'
+          cat > "$DOCS_DIR/00-governance/naming-conventions.md" <<'EOF'
           # 命名规范
           - 状态：已完成
           - 生成阶段：job_05_定义基础规范
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_05_定义基础规范.json" <<EOF
+          cat > "$STATUS_DIR/job_05_定义基础规范.json" <<EOF
           {
             "job": "job_05_定义基础规范",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_05_定义基础规范"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -443,57 +461,63 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_05_定义基础规范.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_05_定义基础规范.json"
+          test -f "$STATUS_DIR/job_05_定义基础规范.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_05_定义基础规范.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_06_建立菜单结构.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_06_建立菜单结构.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成菜单结构文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/03-information-architecture"
+          mkdir -p "$DOCS_DIR/03-information-architecture"
 
-          cat > "$文档目录/03-information-architecture/menu-tree.md" <<'EOF'
+          cat > "$DOCS_DIR/03-information-architecture/menu-tree.md" <<'EOF'
           # 菜单树
           - 状态：已完成
           - 生成阶段：job_06_建立菜单结构
           EOF
 
-          cat > "$文档目录/03-information-architecture/module-map.md" <<'EOF'
+          cat > "$DOCS_DIR/03-information-architecture/module-map.md" <<'EOF'
           # 模块图
           - 状态：已完成
           - 生成阶段：job_06_建立菜单结构
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_06_建立菜单结构.json" <<EOF
+          cat > "$STATUS_DIR/job_06_建立菜单结构.json" <<EOF
           {
             "job": "job_06_建立菜单结构",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_06_建立菜单结构"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -510,51 +534,57 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_06_建立菜单结构.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_06_建立菜单结构.json"
+          test -f "$STATUS_DIR/job_06_建立菜单结构.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_06_建立菜单结构.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_07_扩展功能树.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_07_扩展功能树.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成功能树文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/03-information-architecture"
+          mkdir -p "$DOCS_DIR/03-information-architecture"
 
-          cat > "$文档目录/03-information-architecture/feature-tree.md" <<'EOF'
+          cat > "$DOCS_DIR/03-information-architecture/feature-tree.md" <<'EOF'
           # 功能树
           - 状态：已完成
           - 生成阶段：job_07_扩展功能树
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_07_扩展功能树.json" <<EOF
+          cat > "$STATUS_DIR/job_07_扩展功能树.json" <<EOF
           {
             "job": "job_07_扩展功能树",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_07_扩展功能树"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -571,65 +601,71 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_07_扩展功能树.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_07_扩展功能树.json"
+          test -f "$STATUS_DIR/job_07_扩展功能树.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_07_扩展功能树.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_08_生成页面详细设计.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_08_生成页面详细设计.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成页面规格文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/06-pages/module-workbench"
-          mkdir -p "$文档目录/06-pages/module-appointments"
-          mkdir -p "$文档目录/06-pages/module-patients"
+          mkdir -p "$DOCS_DIR/06-pages/module-workbench"
+          mkdir -p "$DOCS_DIR/06-pages/module-appointments"
+          mkdir -p "$DOCS_DIR/06-pages/module-patients"
 
-          cat > "$文档目录/06-pages/module-workbench/workbench-home-page-spec.md" <<'EOF'
+          cat > "$DOCS_DIR/06-pages/module-workbench/workbench-home-page-spec.md" <<'EOF'
           # 工作台首页详细设计
           - 状态：已完成
           - 生成阶段：job_08_生成页面详细设计
           EOF
 
-          cat > "$文档目录/06-pages/module-appointments/appointment-calendar-page-spec.md" <<'EOF'
+          cat > "$DOCS_DIR/06-pages/module-appointments/appointment-calendar-page-spec.md" <<'EOF'
           # 预约日历页面详细设计
           - 状态：已完成
           - 生成阶段：job_08_生成页面详细设计
           EOF
 
-          cat > "$文档目录/06-pages/module-patients/patient-list-page-spec.md" <<'EOF'
+          cat > "$DOCS_DIR/06-pages/module-patients/patient-list-page-spec.md" <<'EOF'
           # 患者列表页面详细设计
           - 状态：已完成
           - 生成阶段：job_08_生成页面详细设计
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_08_生成页面详细设计.json" <<EOF
+          cat > "$STATUS_DIR/job_08_生成页面详细设计.json" <<EOF
           {
             "job": "job_08_生成页面详细设计",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_08_生成页面详细设计"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -646,31 +682,34 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_08_生成页面详细设计.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_08_生成页面详细设计.json"
+          test -f "$STATUS_DIR/job_08_生成页面详细设计.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_08_生成页面详细设计.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_09_生成底层模型.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_09_生成底层模型.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成底层模型文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
         shell: bash
         run: |
-          mkdir -p "$文档目录/04-domain-model"
+          mkdir -p "$DOCS_DIR/04-domain-model"
 
           for file in data-dictionary.md enums.md code-rules.md permission-matrix.md state-machines.md; do
-            cat > "$文档目录/04-domain-model/$file" <<EOF
+            cat > "$DOCS_DIR/04-domain-model/$file" <<EOF
           # ${file%.md}
           - 状态：已完成
           - 生成阶段：job_09_生成底层模型
@@ -678,22 +717,24 @@ jobs:
           done
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_09_生成底层模型.json" <<EOF
+          cat > "$STATUS_DIR/job_09_生成底层模型.json" <<EOF
           {
             "job": "job_09_生成底层模型",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_09_生成底层模型"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -709,60 +750,66 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 拉取最新提交
+      - name: 拉取最新��交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_09_生成底层模型.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_09_生成底层模型.json"
+          test -f "$STATUS_DIR/job_09_生成底层模型.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_09_生成底层模型.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_10_生成验收测试文档.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_10_生成验收测试文档.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成测试规格文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/07-test-specs/module-workbench"
-          mkdir -p "$文档目录/07-test-specs/module-appointments"
-          mkdir -p "$文档目录/07-test-specs/module-patients"
+          mkdir -p "$DOCS_DIR/07-test-specs/module-workbench"
+          mkdir -p "$DOCS_DIR/07-test-specs/module-appointments"
+          mkdir -p "$DOCS_DIR/07-test-specs/module-patients"
 
-          cat > "$文档目录/07-test-specs/visual-test-guidelines.md" <<'EOF'
+          cat > "$DOCS_DIR/07-test-specs/visual-test-guidelines.md" <<'EOF'
           # 视觉验收规范
           - 状态：已完成
           - 生成阶段：job_10_生成验收测试文档
           EOF
 
-          cat > "$文档目录/07-test-specs/interaction-test-guidelines.md" <<'EOF'
+          cat > "$DOCS_DIR/07-test-specs/interaction-test-guidelines.md" <<'EOF'
           # 轻交互验收规范
           - 状态：已完成
           - 生成阶段：job_10_生成验收测试文档
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_10_生成验收测试文档.json" <<EOF
+          cat > "$STATUS_DIR/job_10_生成验收测试文档.json" <<EOF
           {
             "job": "job_10_生成验收测试文档",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_10_生成验收测试文档"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -779,38 +826,42 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_10_生成验收测试文档.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_10_生成验收测试文档.json"
+          test -f "$STATUS_DIR/job_10_生成验收测试文档.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_10_生成验收测试文档.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_11_生成AI编码任务包.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_11_生成AI编码任务包.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 生成 AI 编码任务包文档
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/08-ai-task-packs/module-workbench"
-          mkdir -p "$文档目录/08-ai-task-packs/module-appointments"
-          mkdir -p "$文档目录/08-ai-task-packs/module-patients"
-          mkdir -p "$输出目录"
+          mkdir -p "$DOCS_DIR/08-ai-task-packs/module-workbench"
+          mkdir -p "$DOCS_DIR/08-ai-task-packs/module-appointments"
+          mkdir -p "$DOCS_DIR/08-ai-task-packs/module-patients"
+          mkdir -p "$OUTPUT_DIR"
 
-          cat > "$文档目录/08-ai-task-packs/prompt-template.md" <<'EOF'
+          cat > "$DOCS_DIR/08-ai-task-packs/prompt-template.md" <<'EOF'
           # AI 编码任务包模板
           - 状态：已完成
           - 生成阶段：job_11_生成AI编码任务包
           EOF
 
-          cat > "$输出目录/task-pack-index.json" <<'EOF'
+          cat > "$OUTPUT_DIR/task-pack-index.json" <<'EOF'
           {
             "status": "completed",
             "generated_by": "job_11_生成AI编码任务包",
@@ -819,22 +870,24 @@ jobs:
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_11_生成AI编码任务包.json" <<EOF
+          cat > "$STATUS_DIR/job_11_生成AI编码任务包.json" <<EOF
           {
             "job": "job_11_生成AI编码任务包",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$输出目录" "$文档目录" "$状态目录" || true
+          git add "$OUTPUT_DIR" "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_11_生成AI编码任务包"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -853,66 +906,72 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查前置阶段是否完成
+        shell: bash
         run: |
-          test -f "$状态目录/job_11_生成AI编码任务包.json"
-          grep -q '"status":[[:space:]]*"completed"' "$状态目录/job_11_生成AI编码任务包.json"
+          test -f "$STATUS_DIR/job_11_生成AI编码任务包.json"
+          grep -q '"status":[[:space:]]*"completed"' "$STATUS_DIR/job_11_生成AI编码任务包.json"
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_12_编码前人工审计.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_12_编码前人工审计.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 写入审计与冻结记录
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/09-review/audit-records"
-          mkdir -p "$文档目录/09-review/freeze-records"
+          mkdir -p "$DOCS_DIR/09-review/audit-records"
+          mkdir -p "$DOCS_DIR/09-review/freeze-records"
 
-          日期="$(date +%F)"
+          current_date="$(date +%F)"
 
-          cat > "$文档目录/09-review/audit-records/precode-audit-${日期}.md" <<EOF
+          cat > "$DOCS_DIR/09-review/audit-records/precode-audit-${current_date}.md" <<EOF
           # 编码前人工审计记录
 
           - 状态：已通过
-          - 日期：${日期}
+          - 日期：${current_date}
           - 阶段：job_12_编码前人工审计
-          - 执行范围：${执行范围}
+          - 执行范围：${TARGET_SCOPE}
           EOF
 
-          cat > "$文档目录/09-review/freeze-records/requirements-freeze-${日期}.md" <<EOF
+          cat > "$DOCS_DIR/09-review/freeze-records/requirements-freeze-${current_date}.md" <<EOF
           # 需求冻结记录
 
           - 状态：已冻结
-          - 日期：${日期}
-          - 执行范围：${执行范围}
+          - 日期：${current_date}
+          - 执行范围：${TARGET_SCOPE}
           - 审批环境：precode-audit
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_12_编码前人工审计.json" <<EOF
+          cat > "$STATUS_DIR/job_12_编码前人工审计.json" <<EOF
           {
             "job": "job_12_编码前人工审计",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_12_编码前人工审计"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
@@ -922,7 +981,7 @@ jobs:
     name: job_13_编码前停止
     needs: job_12_编码前人工审计
     runs-on: ubuntu-latest
-    if: ${{ inputs.编码前停止 == true }}
+    if: ${{ inputs.stop_before_coding }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -930,24 +989,27 @@ jobs:
           fetch-depth: 0
 
       - name: 拉取最新提交
+        shell: bash
         run: git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
       - name: 检查当前阶段是否已完成
-        id: 检查状态
+        id: check_status
+        shell: bash
         run: |
-          状态文件="$状态目录/job_13_编码前停止.json"
-          if [ -f "$状态文件" ] && grep -q '"status":[[:space:]]*"completed"' "$状态文件"; then
-            echo "已完成=true" >> "$GITHUB_OUTPUT"
+          status_file="$STATUS_DIR/job_13_编码前停止.json"
+          if [ -f "$status_file" ] && grep -q '"status":[[:space:]]*"completed"' "$status_file"; then
+            echo "completed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "已完成=false" >> "$GITHUB_OUTPUT"
+            echo "completed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 写入停止记录
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          mkdir -p "$文档目录/09-review/freeze-records"
+          mkdir -p "$DOCS_DIR/09-review/freeze-records"
 
-          cat > "$文档目录/09-review/freeze-records/stop-before-coding.md" <<'EOF'
+          cat > "$DOCS_DIR/09-review/freeze-records/stop-before-coding.md" <<'EOF'
           # 编码前停止记录
 
           - 状态：已停止
@@ -956,34 +1018,37 @@ jobs:
           EOF
 
       - name: 写入阶段状态
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
-          cat > "$状态目录/job_13_编码前停止.json" <<EOF
+          cat > "$STATUS_DIR/job_13_编码前停止.json" <<EOF
           {
             "job": "job_13_编码前停止",
             "status": "completed",
-            "scope": "${执行范围}"
+            "scope": "${TARGET_SCOPE}"
           }
           EOF
 
       - name: 提交当前阶段成果
-        if: steps.检查状态.outputs.已完成 != 'true'
+        if: steps.check_status.outputs.completed != 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$文档目录" "$状态目录" || true
+          git add "$DOCS_DIR" "$STATUS_DIR" || true
           git diff --cached --quiet && echo "没有变更，无需提交。" && exit 0
           git commit -m "docs(requirements): 完成阶段 job_13_编码前停止"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: 输出执行摘要
+        shell: bash
         run: |
           {
             echo "# 需求工程流水线执行完成"
             echo
-            echo "- 执行范围：${执行范围}"
-            echo "- 编码前停止：${编码前停止}"
+            echo "- 执行范围：${TARGET_SCOPE}"
+            echo "- 编码前停止：${STOP_BEFORE_CODING}"
             echo "- 当前结果：已在编码前停止"
             echo "- 后续动作：人工审计后单独触发编码流程"
           } >> "$GITHUB_STEP_SUMMARY"
