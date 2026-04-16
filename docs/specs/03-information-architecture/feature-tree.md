@@ -1,6 +1,7 @@
 # 功能树
 
-> 生成时间: 2026-04-15T09:37:27Z
+> 版本: v2.0
+> 更新时间: 2026-04-15
 > 执行范围: mvp
 > 目标市场: 东南亚 (Southeast Asia)
 
@@ -56,9 +57,13 @@ patient/
 │   ├── billing-history         # 费用记录
 │   ├── medical-records         # 病历记录
 │   └── images                  # 影像资料
-└── patient-tags                # 患者标签
-    ├── tag-manage              # 标签管理
-    └── batch-tag               # 批量打标
+├── patient-tags                # 患者标签
+│   ├── tag-manage              # 标签管理
+│   └── batch-tag               # 批量打标
+└── patient-family              # 家庭关系（轻量级）
+    ├── guardian-info            # 监护人/紧急联系人
+    ├── family-link             # 家庭成员关联（同一家庭患者关联）
+    └── referral-source         # 推荐来源（含家庭推荐）
 ```
 
 ### 3. 收费结算 (billing)
@@ -82,7 +87,16 @@ billing/
 ├── charge-history              # 收费记录
 ├── refund                      # 退款管理
 ├── fee-item-manage             # 费用项目管理
-└── invoice                     # 发票管理
+├── invoice                     # 发票管理
+├── receivable                  # 应收账款
+│   ├── outstanding-list        # 欠费列表
+│   ├── patient-balance         # 患者余额查看
+│   ├── overdue-alert           # 逾期提醒
+│   └── bad-debt                # 坏账核销
+└── installment                 # 分期付款
+    ├── installment-plan        # 分期方案设置
+    ├── installment-track       # 分期还款跟踪
+    └── installment-reminder    # 还款提醒
 ```
 
 ### 4. 仓储管理 (warehouse)
@@ -187,6 +201,88 @@ auth/
 └── department-manage           # 科室管理
 ```
 
+### 7. 病历管理 (medical-record)
+
+```
+medical-record/
+├── dental-chart                # 牙位图管理
+│   ├── chart-view              # 牙位图查看（FDI编码，成人32颗/儿童20颗）
+│   ├── tooth-status            # 牙齿状态记录（健康/龋齿/缺失/修复/种植/冠/桥/根管等）
+│   ├── tooth-history           # 单颗牙历史记录（按时间线展示）
+│   └── batch-update            # 批量更新牙齿状态
+├── clinical-image              # 临床影像
+│   ├── image-upload            # 影像上传（口内照/根尖片/全景片/CBCT）
+│   ├── image-tooth-bind        # 影像与牙位关联（必须关联具体牙位或区域）
+│   ├── image-annotation        # 影像标注
+│   ├── before-after            # 治疗前后对比
+│   └── image-timeline          # 同一牙位影像时间线
+├── treatment-plan              # 治疗方案
+│   ├── plan-create             # 创建治疗方案（多步骤）
+│   ├── plan-cost-estimate      # 费用预估
+│   ├── plan-progress           # 进度跟踪
+│   ├── plan-consent            # 患者知情同意
+│   └── plan-adjust             # 方案调整
+├── medical-record-create       # 病历录入
+│   ├── chief-complaint         # 主诉
+│   ├── examination             # 检查
+│   ├── diagnosis               # 诊断
+│   ├── treatment-record        # 治疗记录（关联牙位、影像）
+│   └── prescription            # 处方/医嘱
+├── record-template             # 病历模板
+│   ├── template-manage         # 模板管理
+│   └── template-apply          # 套用模板
+└── record-print                # 病历打印/导出
+```
+
+### 8. 会员体系 (membership)
+
+```
+membership/
+├── member-level                # 会员等级
+│   ├── level-config            # 等级配置（普通/银卡/金卡/铂金）
+│   ├── upgrade-rule            # 升级规则（按消费金额自动升级）
+│   └── level-privilege         # 等级权益（折扣比例/积分倍率/免费项目）
+├── points                      # 积分系统
+│   ├── points-earn             # 积分获取（消费/签到/推荐）
+│   ├── points-redeem           # 积分使用（抵扣/兑换）
+│   └── points-history          # 积分流水
+├── stored-value                # 储值卡
+│   ├── recharge                # 充值（多币种）
+│   ├── consume                 # 消费扣款
+│   ├── balance-query           # 余额查询
+│   └── recharge-history        # 充值/消费记录
+├── member-package              # 会员套餐
+│   ├── package-config          # 套餐配置（洁牙套餐/美白套餐等）
+│   ├── package-purchase        # 套餐购买
+│   ├── package-usage           # 套餐使用（次数扣减）
+│   └── package-expiry          # 套餐到期管理
+└── member-report               # 会员报表
+    ├── member-stats            # 会员统计
+    └── consumption-analysis    # 消费分析
+```
+
+### 9. 随访管理 (follow-up)
+
+```
+follow-up/
+├── follow-up-plan              # 随访计划
+│   ├── auto-generate           # 根据治疗类型自动生成
+│   ├── manual-create           # 手动创建
+│   └── plan-template           # 随访模板（洁牙半年、种植术后1/3/6月等）
+├── reminder                    # 提醒通知
+│   ├── whatsapp-notify         # WhatsApp 提醒
+│   ├── line-notify             # LINE 提醒
+│   ├── sms-notify              # SMS 提醒
+│   └── reminder-config         # 提醒配置（提前天数、重复次数）
+├── recall-management           # 复诊管理
+│   ├── pending-recall          # 待复诊列表
+│   ├── overdue-recall          # 逾期未复诊
+│   └── recall-history          # 复诊记录
+└── no-show-tracking            # 失约管理
+    ├── no-show-list            # 失约列表
+    └── re-contact              # 重新联系
+```
+
 ## 功能优先级标注
 
 | 功能 | MVP | 二期 | 远期 |
@@ -194,23 +290,27 @@ auth/
 | 预约创建/修改/取消 | ✓ | | |
 | 预约日历视图 | ✓ | | |
 | 患者 CRUD | ✓ | | |
+| 患者家庭关系/推荐来源 | ✓ | | |
 | 收费创建/多币种收款 | ✓ | | |
+| 应收账款/分期付款 | ✓ | | |
 | 用户登录/权限 | ✓ | | |
 | 仓库管理/入库/出库 | ✓ | | |
 | 采购管理/供应商管理 | ✓ | | |
 | 库存盘点/预警 | ✓ | | |
 | 批次效期管理 | ✓ | | |
+| 牙位图/临床影像/治疗方案 | ✓ | | |
+| 会员等级/积分/储值/套餐 | ✓ | | |
+| 随访计划/提醒/复诊管理 | ✓ | | |
 | 商城商品管理 | | ✓ | |
 | 商城订单管理 | | ✓ | |
 | B2C 商城前台 | | ✓ | |
 | B2B 采购平台 | | ✓ | |
-| 病历管理 | | ✓ | |
+| 病历录入/模板/打印 | | ✓ | |
 | 临床库存 | | ✓ | |
 | 报表分析 | | ✓ | |
 | 多语言支持(基础) | ✓ | | |
 | 牙科旅游在线预约 | | | ✓ |
-| 影像管理 | | | ✓ |
+| 影像标注/前后对比 | | | ✓ |
 | AI 辅助 | | | ✓ |
 | WhatsApp/LINE 集成 | | | ✓ |
 | Shopee/Lazada 对接 | | | ✓ |
-

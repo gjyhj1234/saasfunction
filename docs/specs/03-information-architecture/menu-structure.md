@@ -1,6 +1,7 @@
 # 系统菜单结构
 
-> 生成时间: 2026-04-15T09:37:27Z
+> 版本: v2.0
+> 更新时间: 2026-04-15
 > 执行范围: mvp
 > 目标市场: 东南亚 (Southeast Asia)
 
@@ -29,11 +30,37 @@
 │   │   └── Images (影像资料)
 │   └── Patient Tags (患者标签)
 │
-├── 📋 Medical Records (病历管理)
+├── 🦷 Medical Records (病历管理)
+│   ├── Dental Chart (牙位图)
+│   ├── Treatment Plans (治疗方案)
+│   │   ├── Plan List (方案列表)
+│   │   └── New Plan (新建方案)
+│   ├── Clinical Images (临床影像)
+│   │   ├── Image Gallery (影像库)
+│   │   └── Upload Image (上传影像)
 │   ├── Record List (病历列表)
 │   ├── New Record (新建病历)
-│   ├── Templates (病历模板)
-│   └── Dental Chart (牙位图)
+│   └── Templates (病历模板)
+│
+├── 👑 Membership (会员管理)
+│   ├── Member List (会员列表)
+│   ├── Level Config (等级配置)
+│   ├── Points Management (积分管理)
+│   │   ├── Points Rules (积分规则)
+│   │   └── Points History (积分流水)
+│   ├── Stored Value (储值卡)
+│   │   ├── Recharge (充值)
+│   │   └── Balance Query (余额查询)
+│   └── Member Packages (会员套餐)
+│       ├── Package List (套餐列表)
+│       └── Package Config (套餐配置)
+│
+├── 🔄 Follow-up (随访管理)
+│   ├── Follow-up Plans (随访计划)
+│   ├── Pending Recall (待复诊)
+│   ├── Overdue Recall (逾期未复诊)
+│   ├── Reminder Config (提醒配置)
+│   └── No-Show Tracking (失约跟踪)
 │
 ├── 💰 Billing (收费结算)
 │   ├── Pending Charges (待收费)
@@ -41,6 +68,12 @@
 │   ├── Refund Management (退款管理)
 │   ├── Fee Items Setup (费用项目设置)
 │   └── Invoice Management (发票管理)
+│
+├── 💳 Receivables (应收账款)
+│   ├── Outstanding List (欠费列表)
+│   ├── Installment Plans (分期管理)
+│   ├── Overdue Alerts (逾期提醒)
+│   └── Bad Debt Write-off (坏账核销)
 │
 ├── 🏭 Warehouse (仓储管理)
 │   ├── Warehouse List (仓库列表)
@@ -116,7 +149,10 @@
 | Appointments | ✓ | ✓(R) | ✓ | ✓ | - | - | My Appts |
 | Patients | ✓ | ✓ | ✓ | ✓(R) | - | - | My Profile |
 | Medical Records | ✓ | ✓ | ✓(R) | ✓(R) | - | - | - |
+| Membership | ✓ | ✓(R) | ✓ | - | - | - | My Member |
+| Follow-up | ✓ | ✓ | ✓ | ✓(R) | - | - | - |
 | Billing | ✓ | ✓(R) | ✓ | - | - | - | My Bills |
+| Receivables | ✓ | - | ✓ | - | - | - | - |
 | Warehouse | ✓ | - | - | - | ✓ | - | - |
 | Clinical Inventory | ✓ | ✓(R) | ✓ | ✓ | ✓(R) | - | - |
 | Mall (Backend) | ✓ | - | - | - | - | ✓ | - |
@@ -125,7 +161,7 @@
 | Notifications | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Settings | ✓ | - | - | - | - | - | - |
 
-> R = Read Only; Self/Desk/WH/Mall = 仅限各自领域的报表
+> R = Read Only; Self/Desk/WH/Mall = 仅限各自领域的报表; My Member = 仅查看自己的会员信息
 
 ## 导航设计说明
 
@@ -135,4 +171,3 @@
 - 最近访问: 快捷入口
 - 语言切换: 顶栏右上角
 - 币种显示: 根据租户配置自动匹配
-
