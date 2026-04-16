@@ -329,8 +329,8 @@
 | 关联预约 | `appointment_id` | Select | 否 | | 从患者预约列表中选择; 选择后自动关联医生 |
 | 关联治疗记录 | `treatment_record_id` | Select | 否 | | 从患者治疗记录中选择 |
 | 术前/术后 | `is_before_treatment` | RadioGroup | 否 | | 术前 / 术后 / 不标记 |
-| 关联牙位 | `tooth_numbers` | ToothSelect | 是 | 至少选 1 个 | 点击弹出牙位图选择; 多选; 也可选区域 (全口/上颌/下颌/象限) |
-| 牙位区域 | `region` | Select | 是 | 仅限枚举值 | full_mouth / upper_jaw / lower_jaw / quadrant_1-4 / specific_tooth; 根据牙位选择自动推断 |
+| 关联牙位 | `tooth_numbers` | ToothSelect | 条件必填 | 当 region=specific_tooth 时至少选 1 个 | 点击弹出牙位图选择; 多选; 当选择区域级别 (全口/上颌/下颌/象限) 时可不选具体牙位 |
+| 牙位区域 | `region` | Select | 是 | 仅限枚举值 | full_mouth / upper_jaw / lower_jaw / quadrant_1-4 / specific_tooth; 选择区域级别即满足绑定要求; 选 specific_tooth 则需选具体牙位 |
 | 备注 | `notes` | Textarea | 否 | 最多 500 字符 | |
 
 ### 牙位绑定弹窗
